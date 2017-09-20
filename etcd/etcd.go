@@ -1,0 +1,228 @@
+package etcd
+
+import (
+	//_ "github.com/lflxp/databases/routers"
+	//"github.com/astaxie/beego"
+	"github.com/coreos/etcd/clientv3"
+	"time"
+	"fmt"
+	"context"
+	"strings"
+	"github.com/coreos/etcd/mvcc/mvccpb"
+)
+
+type EtcdUi struct {
+	Endpoints 	[]string  //[]string{"localhost:2379"}
+	ClientConn 	*clientv3.Client
+	Tree 		[]map[string]string
+}
+
+func (this *EtcdUi) Remove(s []string,de string) []string {
+	tmp := []string{}
+	for _,key := range s {
+		if key != de {
+			tmp = append(tmp,key)
+		}
+	}
+	return tmp
+}
+
+//获取顶级目录
+func (this *EtcdUi) GetTopic(data []string) []string {
+	tmp := data
+	for _,key := range data {
+		for _,k2 := range data {
+			if key != k2 {
+				//如果key短值是k2长值得开头(key比k2短，但是key和k2得值是包含关系)
+				if strings.HasPrefix(k2,key) && strings.Contains(k2,key) {
+					fmt.Println("##############TOP ",k2,key)
+					tmp = this.Remove(tmp,k2)
+				}
+			}
+		}
+	}
+	for _,k := range tmp {
+		ttt := map[string]string{}
+		ttt["name"] = k
+		ttt["value"] = k
+		ttt["parentOrg"] = "null"
+		this.Tree = append(this.Tree,ttt)
+	}
+	return tmp
+}
+
+//判断现有tree集合里面有key没有
+func (this *EtcdUi) HasKeyByTree(key string) bool {
+	rs := false
+	if len(this.Tree) == 0 {
+		return false
+	}
+	for _,k := range this.Tree {
+		if value,ok := k["name"]; ok {
+			if value == key {
+				rs = true
+			}
+		}
+	}
+	return rs
+}
+
+//根据顶级目录 获取所有子目录
+func (this *EtcdUi) GetLastData(key string) {
+	last := this.More(key)
+	for _,y := range last {
+		if string(y.Key) != key {
+			tmp := map[string]string{}
+			fmt.Println("getLastData",string(y.Key))
+			if this.HasChildTree(string(y.Key)) {
+				if !this.HasKeyByTree(string(y.Key)) {
+					fmt.Println("has more",string(y.Key),key)
+					tmp["name"] = string(y.Key)
+					tmp["value"] = string(y.Value)
+					tmp["parentOrg"] = key
+					this.Tree = append(this.Tree,tmp)
+				}
+				this.GetLastData(string(y.Key))
+			} else {
+				if !this.HasKeyByTree(string(y.Key)) {
+					fmt.Println("no more",string(y.Key),string(y.Value),key)
+					tmp["name"] = string(y.Key)
+					tmp["value"] = string(y.Value)
+					tmp["parentOrg"] = key
+					this.Tree = append(this.Tree,tmp)
+				}
+			}
+		}
+	}
+}
+
+func (this *EtcdUi) HasChildTree(key string) bool {
+	var status bool
+	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+	resp,err := this.ClientConn.Get(ctx,key,clientv3.WithPrefix())
+	cancel()
+	if err != nil {
+		fmt.Println(err.Error())
+		panic(err)
+	}
+	if resp.Count == 1 || resp.Count == 0 {
+		status = false
+	} else {
+		status = true
+	}
+	return status
+}
+
+
+//more 是底层吗
+func (this *EtcdUi) More(data string) []*mvccpb.KeyValue {
+	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+	resp,err := this.ClientConn.Get(ctx,data,clientv3.WithPrefix())
+	cancel()
+	if err != nil {
+		fmt.Println(err.Error())
+		panic(err)
+	}
+	return resp.Kvs
+}
+
+//more 是底层吗
+func (this *EtcdUi) Count(data string) bool {
+	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+	resp,err := this.ClientConn.Get(ctx,data,clientv3.WithPrefix())
+	cancel()
+	if err != nil {
+		fmt.Println(err.Error())
+		panic(err)
+	}
+	return resp.More
+}
+
+//get etcd clientV3 conn
+func (this *EtcdUi) InitClientConn() {
+	cli,err := clientv3.New(clientv3.Config{
+		Endpoints:this.Endpoints,
+		DialTimeout:5*time.Second,
+	})
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	this.ClientConn = cli
+}
+
+func (this *EtcdUi) Close() {
+	this.ClientConn.Close()
+}
+
+//endpoint []string{"localhost:2379"}
+func (this *EtcdUi) GetAllDatas() []string {
+	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+	resp,err := this.ClientConn.Get(ctx,"",clientv3.WithPrefix())
+	cancel()
+	if err != nil {
+		fmt.Println(err.Error())
+		panic(err)
+	}
+	//fmt.Println(resp.More)
+	rs := []string{}
+	for _,ev := range resp.Kvs {
+		//fmt.Println(string(ev.Key))
+		//fmt.Println(fmt.Printf("%d %s %s\n",ev.Lease,ev.Key,ev.Value))
+		//fmt.Println(ev.String())
+		//rs[string(ev.Key)] = string(ev.Value)
+		rs = append(rs,string(ev.Key))
+	}
+	return rs
+}
+
+//快速获取tree所有信息
+func (this *EtcdUi) GetAllTreeRelate() {
+	this.InitClientConn()
+	for _,key := range this.GetTopic(this.GetAllDatas()) {
+		this.GetLastData(key)
+	}
+}
+
+//递归函数，获得树形结构的关系信息 tree-view
+func (this *EtcdUi) GetTreeRelate(top []string,all []map[string]string) string {
+	result := []string{}
+	for _,y := range top {
+		result = append(result,"{text:'"+y+"'")
+		if this.HasChild(y,all) {
+			result = append(result,"selectable:false,multiSelect:false,state:{expanded:false,disabled:false},'nodes':["+this.GetTreeRelate(this.ForeignKeys(y,all),all)+"]}")
+		} else {
+			result = append(result,"icon:'glyphicon glyphicon-user',selectable:true,href:'#',ids:'"+y+"'}")
+		}
+	}
+	return strings.Join(result,",")
+}
+
+//判断是否还有子机构
+func (this *EtcdUi) HasChild(id string,data []map[string]string) bool {
+	ok := false
+	for _,y := range data {
+		if y["parentOrg"] == id {
+			ok = true
+		}
+	}
+	return ok
+}
+
+//获取所有上级机构为key的子机构（第二层，用于下面的递归）
+func (this *EtcdUi) ForeignKeys(key string,data []map[string]string) []string {
+	res := []string{}
+	for _,y := range data {
+		if y["parentOrg"] == key {
+			res = append(res,y["name"])
+		}
+	}
+	return res
+}
+
+
+//根据顶级机构和所有数据进行递归 得到树形结构的json字符串
+//获取所有tree table最终数据
+func (this *EtcdUi) GetTreeByString() string {
+	this.GetAllTreeRelate()
+	return "["+this.GetTreeRelate(this.GetTopic(this.GetAllDatas()),this.Tree)+"]"
+}
