@@ -189,7 +189,7 @@ func (this *EtcdUi) GetTreeRelate(top []string,all []map[string]string) string {
 	for _,y := range top {
 		result = append(result,"{text:'"+y+"'")
 		if this.HasChild(y,all) {
-			result = append(result,"selectable:false,multiSelect:false,state:{expanded:false,disabled:false},'nodes':["+this.GetTreeRelate(this.ForeignKeys(y,all),all)+"]}")
+			result = append(result,"selectable:true,multiSelect:false,state:{expanded:false,disabled:false},href:'#',ids:'"+y+"','nodes':["+this.GetTreeRelate(this.ForeignKeys(y,all),all)+"]}")
 		} else {
 			result = append(result,"icon:'glyphicon glyphicon-user',selectable:true,href:'#',ids:'"+y+"'}")
 		}
