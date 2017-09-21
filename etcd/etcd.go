@@ -5,10 +5,9 @@ import (
 	//"github.com/astaxie/beego"
 	"github.com/coreos/etcd/clientv3"
 	"time"
-	"fmt"
+	//"fmt"
 	"context"
 	"strings"
-	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 type EtcdUi struct {
@@ -75,7 +74,7 @@ func (this *EtcdUi) HasKeyByTree(key string) bool {
 //根据顶级目录 获取所有子目录
 func (this *EtcdUi) GetLastData(key string) {
 	last := this.More(key)
-	for _,y := range last {
+	for _,y := range last.Kvs {
 		if string(y.Key) != key {
 			tmp := map[string]string{}
 			//fmt.Println("getLastData",string(y.Key))
@@ -120,7 +119,7 @@ func (this *EtcdUi) HasChildTree(key string) bool {
 
 
 //more 是底层吗
-func (this *EtcdUi) More(data string) []*mvccpb.KeyValue {
+func (this *EtcdUi) More(data string) *clientv3.GetResponse {
 	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
 	resp,err := this.ClientConn.Get(ctx,data,clientv3.WithPrefix())
 	cancel()
@@ -128,7 +127,32 @@ func (this *EtcdUi) More(data string) []*mvccpb.KeyValue {
 		//fmt.Println(err.Error())
 		panic(err)
 	}
-	return resp.Kvs
+	return resp
+}
+
+//获取数据
+func (this *EtcdUi) FindData(data string) map[string]interface{} {
+	defer this.Close()
+	TotalRs := map[string]interface{}{}
+	result := []map[string]interface{}{}
+	this.InitClientConn()
+	resp := this.More(data)
+	TotalRs["total"] = resp.Count
+	for _,key := range resp.Kvs {
+		tmp := map[string]interface{}{}
+		tmp["id"] = string(key.Key)
+		tmp["value"] = string(key.Value)
+		tmp["version"] = key.Version
+		tmp["lease"] = key.Lease
+		tmp["createrevision"] = key.CreateRevision
+		tmp["moderevision"] = key.ModRevision
+		tmp["memberid"] = resp.Header.MemberId
+		tmp["ClusterId"] = resp.Header.ClusterId
+		tmp["RaftTerm"] = resp.Header.RaftTerm
+		result = append(result,tmp)
+	}
+	TotalRs["rows"] = result
+	return TotalRs
 }
 
 //more 是底层吗

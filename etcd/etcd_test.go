@@ -30,7 +30,7 @@ func TestEtcdUi_More(t *testing.T) {
 	st.InitClientConn()
 	rs := st.More("foo1123")
 	fmt.Println(fmt.Sprintf("%d",len(rs)))
-	for _,k := range rs {
+	for _,k := range rs.Kvs {
 		fmt.Println(string(k.Key),string(k.Value))
 	}
 }
