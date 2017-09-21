@@ -15,6 +15,7 @@ type EtcdUi struct {
 	Endpoints 	[]string  //[]string{"localhost:2379"}
 	ClientConn 	*clientv3.Client
 	Tree 		[]map[string]string
+	TopName 	[]string 	//顶级数据库名
 }
 
 func (this *EtcdUi) Remove(s []string,de string) []string {
@@ -28,6 +29,7 @@ func (this *EtcdUi) Remove(s []string,de string) []string {
 }
 
 //获取顶级目录
+//TopName目前只支持单数据库 多数据库以后写
 func (this *EtcdUi) GetTopic(data []string) []string {
 	tmp := data
 	for _,key := range data {
@@ -35,17 +37,20 @@ func (this *EtcdUi) GetTopic(data []string) []string {
 			if key != k2 {
 				//如果key短值是k2长值得开头(key比k2短，但是key和k2得值是包含关系)
 				if strings.HasPrefix(k2,key) && strings.Contains(k2,key) {
-					fmt.Println("##############TOP ",k2,key)
+					//fmt.Println("##############TOP ",k2,key)
 					tmp = this.Remove(tmp,k2)
 				}
 			}
 		}
 	}
+	this.TopName = []string{"ETCD->"+strings.Join(this.Endpoints,"<-")}
+	//将连接作为顶级域名
+	this.Tree = append(this.Tree,map[string]string{"name":this.TopName[0],"parentOrg":"null"})
 	for _,k := range tmp {
 		ttt := map[string]string{}
 		ttt["name"] = k
 		ttt["value"] = k
-		ttt["parentOrg"] = "null"
+		ttt["parentOrg"] = this.TopName[0]
 		this.Tree = append(this.Tree,ttt)
 	}
 	return tmp
@@ -73,10 +78,10 @@ func (this *EtcdUi) GetLastData(key string) {
 	for _,y := range last {
 		if string(y.Key) != key {
 			tmp := map[string]string{}
-			fmt.Println("getLastData",string(y.Key))
+			//fmt.Println("getLastData",string(y.Key))
 			if this.HasChildTree(string(y.Key)) {
 				if !this.HasKeyByTree(string(y.Key)) {
-					fmt.Println("has more",string(y.Key),key)
+					//fmt.Println("has more",string(y.Key),key)
 					tmp["name"] = string(y.Key)
 					tmp["value"] = string(y.Value)
 					tmp["parentOrg"] = key
@@ -85,7 +90,7 @@ func (this *EtcdUi) GetLastData(key string) {
 				this.GetLastData(string(y.Key))
 			} else {
 				if !this.HasKeyByTree(string(y.Key)) {
-					fmt.Println("no more",string(y.Key),string(y.Value),key)
+					//fmt.Println("no more",string(y.Key),string(y.Value),key)
 					tmp["name"] = string(y.Key)
 					tmp["value"] = string(y.Value)
 					tmp["parentOrg"] = key
@@ -102,7 +107,7 @@ func (this *EtcdUi) HasChildTree(key string) bool {
 	resp,err := this.ClientConn.Get(ctx,key,clientv3.WithPrefix())
 	cancel()
 	if err != nil {
-		fmt.Println(err.Error())
+		//fmt.Println(err.Error())
 		panic(err)
 	}
 	if resp.Count == 1 || resp.Count == 0 {
@@ -120,7 +125,7 @@ func (this *EtcdUi) More(data string) []*mvccpb.KeyValue {
 	resp,err := this.ClientConn.Get(ctx,data,clientv3.WithPrefix())
 	cancel()
 	if err != nil {
-		fmt.Println(err.Error())
+		//fmt.Println(err.Error())
 		panic(err)
 	}
 	return resp.Kvs
@@ -132,7 +137,7 @@ func (this *EtcdUi) Count(data string) bool {
 	resp,err := this.ClientConn.Get(ctx,data,clientv3.WithPrefix())
 	cancel()
 	if err != nil {
-		fmt.Println(err.Error())
+		//fmt.Println(err.Error())
 		panic(err)
 	}
 	return resp.More
@@ -145,7 +150,8 @@ func (this *EtcdUi) InitClientConn() {
 		DialTimeout:5*time.Second,
 	})
 	if err != nil {
-		fmt.Println(err.Error())
+		//fmt.Println(err.Error())
+		panic(err)
 	}
 	this.ClientConn = cli
 }
@@ -160,7 +166,7 @@ func (this *EtcdUi) GetAllDatas() []string {
 	resp,err := this.ClientConn.Get(ctx,"",clientv3.WithPrefix())
 	cancel()
 	if err != nil {
-		fmt.Println(err.Error())
+		//fmt.Println(err.Error())
 		panic(err)
 	}
 	//fmt.Println(resp.More)
@@ -187,7 +193,7 @@ func (this *EtcdUi) GetAllTreeRelate() {
 func (this *EtcdUi) GetTreeRelate(top []string,all []map[string]string) string {
 	result := []string{}
 	for _,y := range top {
-		result = append(result,"{text:'"+y+"'")
+		result = append(result,"{text:'"+strings.Split(y,"/")[len(strings.Split(y,"/"))-1]+"'")
 		if this.HasChild(y,all) {
 			result = append(result,"selectable:true,multiSelect:false,state:{expanded:false,disabled:false},href:'#',ids:'"+y+"','nodes':["+this.GetTreeRelate(this.ForeignKeys(y,all),all)+"]}")
 		} else {
@@ -223,6 +229,8 @@ func (this *EtcdUi) ForeignKeys(key string,data []map[string]string) []string {
 //根据顶级机构和所有数据进行递归 得到树形结构的json字符串
 //获取所有tree table最终数据
 func (this *EtcdUi) GetTreeByString() string {
+	defer this.Close()
 	this.GetAllTreeRelate()
-	return "["+this.GetTreeRelate(this.GetTopic(this.GetAllDatas()),this.Tree)+"]"
+	//return "["+this.GetTreeRelate(this.GetTopic(this.GetAllDatas()),this.Tree)+"]"
+	return "["+this.GetTreeRelate(this.TopName,this.Tree)+"]"
 }
