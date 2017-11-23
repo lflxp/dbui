@@ -152,7 +152,7 @@ func (this *EtcdUi) FindData(data string) map[string]interface{} {
 		tmp["memberid"] = resp.Header.MemberId
 		tmp["ClusterId"] = resp.Header.ClusterId
 		tmp["RaftTerm"] = resp.Header.RaftTerm
-		tmp["op"] = fmt.Sprintf("<button onclick=\"Delete('%s')\" class=\"btn btn-danger btn-sm\"><i class=\"glyphicon glyphicon-remove\"></i> 删除 </button>",string(key.Key)) 
+		tmp["op"] = fmt.Sprintf("<a href=\"#passwd\" data-toggle=\"modal\" id=\"install\" class=\"btn btn-success btn-sm\"><i class=\"glyphicon glyphicon-wrench\"></i>修改</a><button onclick=\"Delete('%s')\" class=\"btn btn-danger btn-sm\"><i class=\"glyphicon glyphicon-remove\"></i> 删除 </button>",string(key.Key)) 
 		result = append(result,tmp)
 	}
 	TotalRs["rows"] = result
