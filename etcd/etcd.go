@@ -5,6 +5,7 @@ import (
 	//_ "github.com/lflxp/databases/routers"
 	//"github.com/astaxie/beego"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"time"
 	"net"
 	"context"
@@ -272,4 +273,55 @@ func (this *EtcdUi) ScannerPort(ipAndPort string) bool {
 		rs = true
 	}
 	return rs
+}
+
+//CRUD
+func (this *EtcdUi) Add(key,value string) error {
+	this.InitClientConn()
+	defer this.Close()
+
+	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+	_,err := this.ClientConn.Put(ctx,key,value)
+	cancel()
+	if err != nil {
+			switch err {
+			case context.Canceled:
+				fmt.Printf("ctx is canceled by another routine: %v\n", err)
+			case context.DeadlineExceeded:
+				fmt.Printf("ctx is attached with a deadline is exceeded: %v\n", err)
+			case rpctypes.ErrEmptyKey:
+				fmt.Printf("client-side error: %v\n", err)
+			default:
+				fmt.Printf("bad cluster endpoints, which are not etcd servers: %v\n", err)
+			}
+		}
+	return err
+}
+
+func (this *EtcdUi) Delete(key string) error {
+	this.InitClientConn()
+	defer this.Close()
+	
+	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+	defer cancel()
+	
+	_,err := this.ClientConn.Delete(ctx,key)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *EtcdUi) DeleteAll(key string) error {
+	this.InitClientConn()
+	defer this.Close()
+	
+	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+	defer cancel()
+	
+	_,err := this.ClientConn.Delete(ctx,key,clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -50,7 +50,36 @@ func TestEtcdUi_GetAllTreeRelate(t *testing.T) {
 }
 
 func TestEtcdUi_GetTreeByString(t *testing.T) {
-	st := EtcdUi{Endpoints:[]string{"localhost:2389"}}
+	st := EtcdUi{Endpoints:[]string{"localhost:2379"}}
 	rs := st.GetTreeByString()
 	t.Log(rs)
+}
+
+func TestEtcdUi_Add(t *testing.T) {
+	st := EtcdUi{Endpoints:[]string{"localhost:2379"}}
+	err := st.Add("/lxp","good")
+	err = st.Add("/lxp/good","good")
+	err = st.Add("/lxp/good1","good")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	t.Log("ok")
+}
+
+func TestEtcdUi_Delete(t *testing.T) {
+	st := EtcdUi{Endpoints:[]string{"localhost:2379"}}
+	err := st.Delete("/lxp/good")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	t.Log("ok")
+}
+
+func TestEtcdUi_DeleteAll(t *testing.T) {
+	st := EtcdUi{Endpoints:[]string{"localhost:2379"}}
+	err := st.DeleteAll("/lxp/good")
+	if err != nil {
+		t.Error(err.Error())
+	}
+	t.Log("ok")
 }
