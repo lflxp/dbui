@@ -29,7 +29,7 @@ func TestEtcdUi_More(t *testing.T) {
 	st := EtcdUi{Endpoints:[]string{"localhost:2379"}}
 	st.InitClientConn()
 	rs := st.More("foo1123")
-	fmt.Println(fmt.Sprintf("%d",len(rs)))
+	fmt.Println(fmt.Sprintf("%d",rs.Count))
 	for _,k := range rs.Kvs {
 		fmt.Println(string(k.Key),string(k.Value))
 	}
@@ -50,7 +50,7 @@ func TestEtcdUi_GetAllTreeRelate(t *testing.T) {
 }
 
 func TestEtcdUi_GetTreeByString(t *testing.T) {
-	st := EtcdUi{Endpoints:[]string{"localhost:2379"}}
+	st := EtcdUi{Endpoints:[]string{"localhost:2389"}}
 	rs := st.GetTreeByString()
 	t.Log(rs)
 }

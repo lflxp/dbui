@@ -1,11 +1,12 @@
 package etcd
 
 import (
+	"fmt"
 	//_ "github.com/lflxp/databases/routers"
 	//"github.com/astaxie/beego"
 	"github.com/coreos/etcd/clientv3"
 	"time"
-	//"fmt"
+	"net"
 	"context"
 	"strings"
 )
@@ -253,8 +254,22 @@ func (this *EtcdUi) ForeignKeys(key string,data []map[string]string) []string {
 //根据顶级机构和所有数据进行递归 得到树形结构的json字符串
 //获取所有tree table最终数据
 func (this *EtcdUi) GetTreeByString() string {
-	defer this.Close()
-	this.GetAllTreeRelate()
-	//return "["+this.GetTreeRelate(this.GetTopic(this.GetAllDatas()),this.Tree)+"]"
-	return "["+this.GetTreeRelate(this.TopName,this.Tree)+"]"
+	if this.ScannerPort(this.Endpoints[0]) {
+		defer this.Close()
+		this.GetAllTreeRelate()
+		//return "["+this.GetTreeRelate(this.GetTopic(this.GetAllDatas()),this.Tree)+"]"
+		return "["+this.GetTreeRelate(this.TopName,this.Tree)+"]"
+	}
+	return fmt.Sprintf("%s Unreachable",this.Endpoints[0])	
+}
+
+func (this *EtcdUi) ScannerPort(ipAndPort string) bool {
+	rs := false
+	//tcpaddr,_ := net.ResolveTCPAddr("tcp4",ipAndPort)
+	//_,err := net.DialTCP("tcp",nil,tcpaddr)
+	_, err := net.DialTimeout("tcp", ipAndPort, 500*time.Millisecond)
+	if err == nil {
+		rs = true
+	}
+	return rs
 }
