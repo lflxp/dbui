@@ -222,7 +222,7 @@ func (this *EtcdUi) GetTreeRelate(top []string,all []map[string]string) string {
 		if this.HasChild(y,all) {
 			result = append(result,"selectable:true,multiSelect:false,state:{expanded:false,disabled:false},href:'#',ids:'"+y+"','nodes':["+this.GetTreeRelate(this.ForeignKeys(y,all),all)+"]}")
 		} else {
-			result = append(result,"icon:'glyphicon glyphicon-user',selectable:true,href:'#',ids:'"+y+"'}")
+			result = append(result,"icon:'glyphicon glyphicon-list-alt',selectable:true,href:'#',ids:'"+y+"'}")
 		}
 	}
 	return strings.Join(result,",")
