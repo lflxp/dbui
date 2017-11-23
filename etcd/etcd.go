@@ -10,6 +10,7 @@ import (
 	"net"
 	"context"
 	"strings"
+	"errors"
 )
 
 type EtcdUi struct {
@@ -151,6 +152,7 @@ func (this *EtcdUi) FindData(data string) map[string]interface{} {
 		tmp["memberid"] = resp.Header.MemberId
 		tmp["ClusterId"] = resp.Header.ClusterId
 		tmp["RaftTerm"] = resp.Header.RaftTerm
+		tmp["op"] = fmt.Sprintf("<button onclick=\"Delete('%s')\" class=\"btn btn-danger btn-sm\"><i class=\"glyphicon glyphicon-remove\"></i> 删除 </button>",string(key.Key)) 
 		result = append(result,tmp)
 	}
 	TotalRs["rows"] = result
@@ -277,51 +279,60 @@ func (this *EtcdUi) ScannerPort(ipAndPort string) bool {
 
 //CRUD
 func (this *EtcdUi) Add(key,value string) error {
-	this.InitClientConn()
-	defer this.Close()
-
-	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
-	_,err := this.ClientConn.Put(ctx,key,value)
-	cancel()
-	if err != nil {
-			switch err {
-			case context.Canceled:
-				fmt.Printf("ctx is canceled by another routine: %v\n", err)
-			case context.DeadlineExceeded:
-				fmt.Printf("ctx is attached with a deadline is exceeded: %v\n", err)
-			case rpctypes.ErrEmptyKey:
-				fmt.Printf("client-side error: %v\n", err)
-			default:
-				fmt.Printf("bad cluster endpoints, which are not etcd servers: %v\n", err)
+	if this.ScannerPort(this.Endpoints[0]) {
+		this.InitClientConn()
+		defer this.Close()
+	
+		ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+		_,err := this.ClientConn.Put(ctx,key,value)
+		cancel()
+		if err != nil {
+				switch err {
+				case context.Canceled:
+					fmt.Printf("ctx is canceled by another routine: %v\n", err)
+				case context.DeadlineExceeded:
+					fmt.Printf("ctx is attached with a deadline is exceeded: %v\n", err)
+				case rpctypes.ErrEmptyKey:
+					fmt.Printf("client-side error: %v\n", err)
+				default:
+					fmt.Printf("bad cluster endpoints, which are not etcd servers: %v\n", err)
+				}
 			}
-		}
-	return err
+		return err	
+	}
+	return errors.New(fmt.Sprintf("%s unreachable",this.Endpoints[0]))
 }
 
 func (this *EtcdUi) Delete(key string) error {
-	this.InitClientConn()
-	defer this.Close()
-	
-	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
-	defer cancel()
-	
-	_,err := this.ClientConn.Delete(ctx,key)
-	if err != nil {
-		return err
+	if this.ScannerPort(this.Endpoints[0]) {
+		this.InitClientConn()
+		defer this.Close()
+		
+		ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+		defer cancel()
+		
+		_,err := this.ClientConn.Delete(ctx,key)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
-	return nil
+	return errors.New(fmt.Sprintf("%s unreachable",this.Endpoints[0]))
 }
 
 func (this *EtcdUi) DeleteAll(key string) error {
-	this.InitClientConn()
-	defer this.Close()
-	
-	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
-	defer cancel()
-	
-	_,err := this.ClientConn.Delete(ctx,key,clientv3.WithPrefix())
-	if err != nil {
-		return err
+	if this.ScannerPort(this.Endpoints[0]) {
+		this.InitClientConn()
+		defer this.Close()
+		
+		ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+		defer cancel()
+		
+		_,err := this.ClientConn.Delete(ctx,key,clientv3.WithPrefix())
+		if err != nil {
+			return err
+		}
+		return nil
 	}
-	return nil
+	return errors.New(fmt.Sprintf("%s unreachable",this.Endpoints[0]))
 }

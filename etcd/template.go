@@ -18,6 +18,7 @@ func GetEtcdTemplate() []map[string]interface{} {
 		map[string]interface{}{"field":"lease","title":"Lease","sortable":"true","align":"center","valign":"middle"},
 		map[string]interface{}{"field":"createrevision","title":"CreateRevision","sortable":"true","align":"center","valign":"middle"},
 		map[string]interface{}{"field":"moderevision","title":"ModRevision","sortable":"true","align":"center","valign":"middle"},
+		map[string]interface{}{"field":"op","title":"操作","sortable":"false","align":"center","valign":"middle"},
 	)
 	return column
 }
