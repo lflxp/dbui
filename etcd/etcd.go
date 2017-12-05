@@ -247,6 +247,7 @@ func (this *EtcdUi) ForeignKeys(key string,data []map[string]string) []string {
 	res := []string{}
 	for _,y := range data {
 		if y["parentOrg"] == key {
+			fmt.Println("HasChild",y["parentOrg"],key,y["name"])
 			res = append(res,y["name"])
 		}
 	}
@@ -335,4 +336,48 @@ func (this *EtcdUi) DeleteAll(key string) error {
 		return nil
 	}
 	return errors.New(fmt.Sprintf("%s unreachable",this.Endpoints[0]))
+}
+
+/*
+Jtopo 总关系图谱
+*/
+//根据顶级机构和所有数据进行递归 得到树形结构的json字符串
+//获取所有tree table最终数据
+func (this *EtcdUi) GetTreeByMapJtopo() ([]map[string]interface{},error) {
+	this.GetTreeByString()
+	for k,v := range this.Tree {
+		fmt.Println(k,v)
+	}
+	
+	top := []string{}
+	for _,v := range this.Tree {
+		if v["parentOrg"] == "null" {
+			top = append(top,v["name"])
+		}	
+	}
+	fmt.Println("top",top)
+	rs := this.GetMapJtopo(top,this.Tree)
+	return rs,nil
+}
+
+//根据map生成json数组
+func (this *EtcdUi) GetMapJtopo(top []string,all []map[string]string) []map[string]interface{} {
+	result := []map[string]interface{}{}
+	//获取顶级项目以及子项目
+	for _,y := range top {
+		tmp := map[string]interface{}{}
+		tmp["name"] = strings.Split(y,"/")[len(strings.Split(y,"/"))-1]
+		//判断是否有子项目
+		if this.HasChild(y,this.Tree) {
+			tmp["nodes"] = this.GetMapJtopo(this.ForeignKeys(y,this.Tree),this.Tree)
+		} else {
+			if tmp["value"] != nil {
+				tmp["value"] = fmt.Sprintf("%s,%s",tmp["value"].(string),y)
+			} else {
+				tmp["value"] = y
+			}
+		}
+		result = append(result,tmp)
+	}
+	return result
 }
