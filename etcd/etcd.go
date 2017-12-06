@@ -247,7 +247,7 @@ func (this *EtcdUi) ForeignKeys(key string,data []map[string]string) []string {
 	res := []string{}
 	for _,y := range data {
 		if y["parentOrg"] == key {
-			fmt.Println("HasChild",y["parentOrg"],key,y["name"])
+			// fmt.Println("HasChild",y["parentOrg"],key,y["name"])
 			res = append(res,y["name"])
 		}
 	}
