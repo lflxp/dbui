@@ -345,9 +345,9 @@ Jtopo 总关系图谱
 //获取所有tree table最终数据
 func (this *EtcdUi) GetTreeByMapJtopo() ([]map[string]interface{},error) {
 	this.GetTreeByString()
-	for k,v := range this.Tree {
-		fmt.Println(k,v)
-	}
+	// for k,v := range this.Tree {
+	// 	fmt.Println(k,v)
+	// }
 	
 	top := []string{}
 	for _,v := range this.Tree {
@@ -355,7 +355,7 @@ func (this *EtcdUi) GetTreeByMapJtopo() ([]map[string]interface{},error) {
 			top = append(top,v["name"])
 		}	
 	}
-	fmt.Println("top",top)
+	// fmt.Println("top",top)
 	rs := this.GetMapJtopo(top,this.Tree)
 	return rs,nil
 }
