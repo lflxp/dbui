@@ -133,6 +133,18 @@ func (this *EtcdUi) More(data string) *clientv3.GetResponse {
 	return resp
 }
 
+//more 是底层吗
+func (this *EtcdUi) Get(data string) *clientv3.GetResponse {
+	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+	resp,err := this.ClientConn.Get(ctx,data)
+	cancel()
+	if err != nil {
+		//fmt.Println(err.Error())
+		panic(err)
+	}
+	return resp
+}
+
 //获取数据
 func (this *EtcdUi) FindData(data string) map[string]interface{} {
 	defer this.Close()
