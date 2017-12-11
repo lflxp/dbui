@@ -6,6 +6,12 @@ import (
 	"fmt"
 )
 
+func TestEtcdUi_InitClientConn(t *testing.T) {
+	st := EtcdUi{Endpoints:[]string{"http://127.0.0.1:2379"},Version:"2"}
+	st.InitClientConn()
+
+}
+
 func TestEtcdUi_GetTopic(t *testing.T) {
 	st := EtcdUi{Endpoints:[]string{"localhost:2379"}}
 	st.InitClientConn()
