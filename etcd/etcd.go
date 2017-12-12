@@ -89,7 +89,7 @@ func (this *EtcdUi) GetLastData(key string) {
 				if !this.HasKeyByTree(string(y.Key)) {
 					//fmt.Println("has more",string(y.Key),key)
 					tmp["name"] = string(y.Key)
-					tmp["value"] = string(y.Value) 
+					tmp["value"] = string(y.Value)
 					tmp["ttl"] = fmt.Sprintf("%d", y.Lease)
 					tmp["version"] = fmt.Sprintf("%d", y.Version)
 					tmp["parentOrg"] = key
@@ -173,8 +173,19 @@ func (this *EtcdUi) FindData(data string) map[string]interface{} {
 	TotalRs["total"] = resp.Count
 	for _, key := range resp.Kvs {
 		tmp := map[string]interface{}{}
+		st1 := string(y.Value)
+		st2 := strings.Split(st1, "::")
+		if len(st2) == 7 {
+			tmp["did"] = st2[0]
+			tmp["dimage"] = st2[1]
+			tmp["dcommand"] = st2[2]
+			tmp["dstate"] = st2[3]
+			tmp["dStatus"] = st2[4]
+			tmp["dports"] = st2[5]
+			tmp["dname"] = st2[6]
+		}
 		tmp["id"] = string(key.Key)
-		tmp["value"] = string(key.Value)
+		tmp["value"] = st1
 		tmp["version"] = key.Version
 		tmp["lease"] = key.Lease
 		tmp["createrevision"] = key.CreateRevision
