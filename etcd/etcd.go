@@ -173,7 +173,7 @@ func (this *EtcdUi) FindData(data string) map[string]interface{} {
 	TotalRs["total"] = resp.Count
 	for _, key := range resp.Kvs {
 		tmp := map[string]interface{}{}
-		st1 := string(y.Value)
+		st1 := string(key.Value)
 		st2 := strings.Split(st1, "::")
 		if len(st2) == 7 {
 			tmp["did"] = st2[0]
