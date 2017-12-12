@@ -89,7 +89,7 @@ func (this *EtcdUi) GetLastData(key string) {
 				if !this.HasKeyByTree(string(y.Key)) {
 					//fmt.Println("has more",string(y.Key),key)
 					tmp["name"] = string(y.Key)
-					tmp["value"] = st1
+					tmp["value"] = string(y.Value) 
 					tmp["ttl"] = fmt.Sprintf("%d", y.Lease)
 					tmp["version"] = fmt.Sprintf("%d", y.Version)
 					tmp["parentOrg"] = key
@@ -103,13 +103,15 @@ func (this *EtcdUi) GetLastData(key string) {
 					st2 := strings.Split(st1, "::")
 					tmp["name"] = string(y.Key)
 					tmp["value"] = st1
-					tmp["did"] = st2[0]
-					tmp["dimage"] = st2[1]
-					tmp["dcommand"] = st2[2]
-					tmp["dstate"] = st2[3]
-					tmp["dStatus"] = st2[4]
-					tmp["dports"] = st2[5]
-					tmp["dname"] = st2[6]
+					if len(st2) == 7 {
+						tmp["did"] = st2[0]
+						tmp["dimage"] = st2[1]
+						tmp["dcommand"] = st2[2]
+						tmp["dstate"] = st2[3]
+						tmp["dStatus"] = st2[4]
+						tmp["dports"] = st2[5]
+						tmp["dname"] = st2[6]
+					}
 					tmp["ttl"] = fmt.Sprintf("%d", y.Lease)
 					tmp["version"] = fmt.Sprintf("%d", y.Version)
 					tmp["parentOrg"] = key
