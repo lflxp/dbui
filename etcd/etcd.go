@@ -340,8 +340,8 @@ func (this *EtcdUi) ScannerPort(ipAndPort string) bool {
 //CRUD
 func (this *EtcdUi) AddLease(key, value string, ttl int64) error {
 	if this.ScannerPort(this.Endpoints[0]) {
-		this.InitClientConn()
-		defer this.Close()
+		// this.InitClientConn()
+		// defer this.Close()
 
 		resp, err := this.ClientConn.Grant(context.TODO(), ttl)
 		if err != nil {
