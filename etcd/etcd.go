@@ -371,7 +371,7 @@ func (this *EtcdUi) AddLease(key, value string, ttl int64) error {
 //CRUD
 func (this *EtcdUi) Add(key, value string) error {
 	if this.ScannerPort(this.Endpoints[0]) {
-		// this.InitClientConn()
+		this.InitClientConn()
 		// defer this.Close()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
