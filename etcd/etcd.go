@@ -22,6 +22,8 @@ type EtcdUi struct {
 	Tree         []map[string]string
 	TopName      []string //顶级数据库名
 	Version      string   //2 or 3
+	Username     string
+	Password     string
 }
 
 func (this *EtcdUi) Remove(s []string, de string) []string {
@@ -218,6 +220,8 @@ func (this *EtcdUi) InitClientConn() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   this.Endpoints,
 			DialTimeout: 5 * time.Second,
+			Username:    this.Username,
+			Password:    this.Password,
 		})
 		if err != nil {
 			//fmt.Println(err.Error())
@@ -229,6 +233,8 @@ func (this *EtcdUi) InitClientConn() {
 			Endpoints:               this.Endpoints,
 			Transport:               client.DefaultTransport,
 			HeaderTimeoutPerRequest: 5 * time.Second,
+			Username:                this.Username,
+			Password:                this.Password,
 		}
 		c, err := client.New(cfg)
 		if err != nil {
