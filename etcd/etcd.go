@@ -272,10 +272,10 @@ func (this *EtcdUi) Get(data string) *clientv3.GetResponse {
 
 //获取数据
 func (this *EtcdUi) FindData(data string) map[string]interface{} {
-	defer this.Close()
+	// defer this.Close()
 	TotalRs := map[string]interface{}{}
 	result := []map[string]interface{}{}
-	this.InitClientConn()
+	// this.InitClientConn()
 	resp := this.More(data)
 	TotalRs["total"] = resp.Count
 	for _, key := range resp.Kvs {
@@ -448,7 +448,7 @@ func (this *EtcdUi) ForeignKeys(key string, data []map[string]string) []string {
 //获取所有tree table最终数据
 func (this *EtcdUi) GetTreeByString() string {
 	if this.ScannerPort(this.Endpoints[0]) {
-		defer this.Close()
+		// defer this.Close()
 		this.GetAllTreeRelate()
 		//return "["+this.GetTreeRelate(this.GetTopic(this.GetAllDatas()),this.Tree)+"]"
 		return "[" + this.GetTreeRelate(this.TopName, this.Tree) + "]"
@@ -510,7 +510,7 @@ func (this *EtcdUi) AddLease(key, value string, ttl int64) error {
 //CRUD
 func (this *EtcdUi) Add(key, value string) error {
 	if this.ScannerPort(this.Endpoints[0]) {
-		this.InitClientConn()
+		// this.InitClientConn()
 		// defer this.Close()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -535,8 +535,8 @@ func (this *EtcdUi) Add(key, value string) error {
 
 func (this *EtcdUi) Delete(key string) error {
 	if this.ScannerPort(this.Endpoints[0]) {
-		this.InitClientConn()
-		defer this.Close()
+		// this.InitClientConn()
+		// defer this.Close()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -552,8 +552,8 @@ func (this *EtcdUi) Delete(key string) error {
 
 func (this *EtcdUi) DeleteAll(key string) error {
 	if this.ScannerPort(this.Endpoints[0]) {
-		this.InitClientConn()
-		defer this.Close()
+		// this.InitClientConn()
+		// defer this.Close()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
