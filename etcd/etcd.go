@@ -24,6 +24,7 @@ type EtcdUi struct {
 	Version      string   //2 or 3
 	Username     string
 	Password     string
+	Detail       map[string]string
 }
 
 func (this *EtcdUi) Remove(s []string, de string) []string {
@@ -64,6 +65,35 @@ func (this *EtcdUi) GetTopic(data []string) []string {
 	return tmp
 }
 
+func (this *EtcdUi) GetTopicToMap() []string {
+	tmp := []string{}
+	for K, _ := range this.Detail {
+		tmp = append(tmp, K)
+	}
+	for _, key := range tmp {
+		for _, k2 := range tmp {
+			if key != k2 {
+				//如果key短值是k2长值得开头(key比k2短，但是key和k2得值是包含关系)
+				if strings.HasPrefix(k2, key) && strings.Contains(k2, key) {
+					//fmt.Println("##############TOP ",k2,key)
+					tmp = this.Remove(tmp, k2)
+				}
+			}
+		}
+	}
+	this.TopName = []string{"ETCD->" + strings.Join(this.Endpoints, "<-")}
+	//将连接作为顶级域名
+	this.Tree = append(this.Tree, map[string]string{"name": this.TopName[0], "parentOrg": "null"})
+	for _, k := range tmp {
+		ttt := map[string]string{}
+		ttt["name"] = k
+		ttt["value"] = k
+		ttt["parentOrg"] = this.TopName[0]
+		this.Tree = append(this.Tree, ttt)
+	}
+	return tmp
+}
+
 //判断现有tree集合里面有key没有
 func (this *EtcdUi) HasKeyByTree(key string) bool {
 	rs := false
@@ -74,6 +104,22 @@ func (this *EtcdUi) HasKeyByTree(key string) bool {
 		if value, ok := k["name"]; ok {
 			if value == key {
 				rs = true
+			}
+		}
+	}
+	return rs
+}
+
+//根据map里面获取more
+//bug /ams/main/config/1 /ams/main 这个tree的bug因为没有判断下一组的情况而是所有子节点导致数据错乱
+func (this *EtcdUi) MoreFromMap(key string) map[string]string {
+	rs := map[string]string{}
+	for kd, v := range this.Detail {
+		if strings.HasPrefix(kd, key) && strings.Contains(kd, key) {
+			// fmt.Println("MoreFromMap", kd, key)
+			tmp := strings.Replace(kd, key+"/", "", 1)
+			if !strings.Contains(tmp, "/") {
+				rs[kd] = v
 			}
 		}
 	}
@@ -124,6 +170,50 @@ func (this *EtcdUi) GetLastData(key string) {
 	}
 }
 
+func (this *EtcdUi) GetLastDataFromMap(key string) {
+	originData := this.MoreFromMap(key)
+	for kkk, vvv := range originData {
+		if kkk != key {
+			tmp := map[string]string{}
+			list := strings.Split(vvv, "|")
+			//fmt.Println("getLastData",string(y.Key))
+			if this.HasChildTreeFromMap(kkk) {
+				if !this.HasKeyByTree(kkk) {
+					//fmt.Println("has more",string(y.Key),key)
+					tmp["name"] = kkk
+					tmp["value"] = list[1]
+					tmp["ttl"] = list[2]
+					tmp["version"] = list[3]
+					tmp["parentOrg"] = key
+					this.Tree = append(this.Tree, tmp)
+				}
+				this.GetLastDataFromMap(kkk)
+			} else {
+				if !this.HasKeyByTree(kkk) {
+					//fmt.Println("no more",string(y.Key),string(y.Value),key)
+					st1 := list[1]
+					st2 := strings.Split(st1, "::")
+					tmp["name"] = list[0]
+					tmp["value"] = st1
+					if len(st2) == 7 {
+						tmp["did"] = st2[0]
+						tmp["dimage"] = st2[1]
+						tmp["dcommand"] = st2[2]
+						tmp["dstate"] = st2[3]
+						tmp["dStatus"] = st2[4]
+						tmp["dports"] = st2[5]
+						tmp["dname"] = st2[6]
+					}
+					tmp["ttl"] = list[2]
+					tmp["version"] = list[3]
+					tmp["parentOrg"] = key
+					this.Tree = append(this.Tree, tmp)
+				}
+			}
+		}
+	}
+}
+
 func (this *EtcdUi) HasChildTree(key string) bool {
 	var status bool
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -141,13 +231,28 @@ func (this *EtcdUi) HasChildTree(key string) bool {
 	return status
 }
 
+func (this *EtcdUi) HasChildTreeFromMap(key string) bool {
+	var status bool
+	Count := 0
+	for kkk, _ := range this.Detail {
+		if strings.HasPrefix(kkk, key) && strings.Contains(kkk, key) {
+			Count += 1
+		}
+	}
+	if Count == 1 || Count == 0 {
+		status = false
+	} else {
+		status = true
+	}
+	return status
+}
+
 //more 是底层吗
 func (this *EtcdUi) More(data string) *clientv3.GetResponse {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	resp, err := this.ClientConn.Get(ctx, data, clientv3.WithPrefix())
 	cancel()
 	if err != nil {
-		//fmt.Println(err.Error())
 		panic(err)
 	}
 	return resp
@@ -195,14 +300,14 @@ func (this *EtcdUi) FindData(data string) map[string]interface{} {
 		tmp["memberid"] = resp.Header.MemberId
 		tmp["ClusterId"] = resp.Header.ClusterId
 		tmp["RaftTerm"] = resp.Header.RaftTerm
-		tmp["op"] = fmt.Sprintf("<a href=\"#passwd\" data-toggle=\"modal\" id=\"install\" class=\"btn btn-success btn-sm\"><i class=\"glyphicon glyphicon-wrench\"></i>修改</a><button onclick=\"Delete('%s')\" class=\"btn btn-danger btn-sm\"><i class=\"glyphicon glyphicon-remove\"></i> 删除 </button>", string(key.Key))
+		tmp["op"] = fmt.Sprintf("<a href=\"#passwd\" data-toggle=\"modal\" id=\"install\" class=\"btn btn-success btn-sm\"><i class=\"glyphicon glyphicon-wrench\"></i>修改</a><button onclick=\"Delete('%s')\" class=\"btn btn-danger btn-sm\"><i class=\"glyphicon glyphicon-remove\"></i> 删����� </button>", string(key.Key))
 		result = append(result, tmp)
 	}
 	TotalRs["rows"] = result
 	return TotalRs
 }
 
-//more 是底层吗
+//more 是底��吗
 func (this *EtcdUi) Count(data string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	resp, err := this.ClientConn.Get(ctx, data, clientv3.WithPrefix())
@@ -275,11 +380,30 @@ func (this *EtcdUi) GetAllDatas() []string {
 	return rs
 }
 
+func (this *EtcdUi) GetAllDatasToMap() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	resp, err := this.ClientConn.Get(ctx, "", clientv3.WithPrefix())
+	cancel()
+	if err != nil {
+		panic(err)
+	}
+	for _, ev := range resp.Kvs {
+		this.Detail[string(ev.Key)] = fmt.Sprintf("%s|%s|%d|%d", string(ev.Key), string(ev.Value), ev.Lease, ev.Version)
+	}
+}
+
 //快速获取tree所有信息
 func (this *EtcdUi) GetAllTreeRelate() {
-	this.InitClientConn()
 	for _, key := range this.GetTopic(this.GetAllDatas()) {
 		this.GetLastData(key)
+	}
+}
+
+func (this *EtcdUi) GetAllTreeRelateToMap() {
+	this.GetAllDatasToMap()
+	for _, key := range this.GetTopicToMap() {
+		// fmt.Println("#####GetAllTreeRelateToMap", key)
+		this.GetLastDataFromMap(key)
 	}
 }
 
@@ -326,6 +450,15 @@ func (this *EtcdUi) GetTreeByString() string {
 	if this.ScannerPort(this.Endpoints[0]) {
 		defer this.Close()
 		this.GetAllTreeRelate()
+		//return "["+this.GetTreeRelate(this.GetTopic(this.GetAllDatas()),this.Tree)+"]"
+		return "[" + this.GetTreeRelate(this.TopName, this.Tree) + "]"
+	}
+	return fmt.Sprintf("%s Unreachable", this.Endpoints[0])
+}
+
+func (this *EtcdUi) GetTreeByStringFromMap() string {
+	if this.ScannerPort(this.Endpoints[0]) {
+		this.GetAllTreeRelateToMap()
 		//return "["+this.GetTreeRelate(this.GetTopic(this.GetAllDatas()),this.Tree)+"]"
 		return "[" + this.GetTreeRelate(this.TopName, this.Tree) + "]"
 	}
@@ -440,7 +573,7 @@ Jtopo 总关系图谱
 //根据顶级机构和所有数据进行递归 得到树形结构的json字符串
 //获取所有tree table最终数据
 func (this *EtcdUi) GetTreeByMapJtopo() ([]map[string]interface{}, error) {
-	this.GetTreeByString()
+	this.GetTreeByStringFromMap()
 	// for k,v := range this.Tree {
 	// 	fmt.Println(k,v)
 	// }
@@ -456,7 +589,7 @@ func (this *EtcdUi) GetTreeByMapJtopo() ([]map[string]interface{}, error) {
 	return rs, nil
 }
 
-//判断现有tree集合里面有key没有
+//判断现有tree������里面有key没有
 func (this *EtcdUi) HasKeyByTreeToGet(key string) (bool, map[string]string) {
 	rs := false
 	if len(this.Tree) == 0 {
@@ -480,7 +613,7 @@ func (this *EtcdUi) GetMapJtopo(top []string, all []map[string]string) []map[str
 	for _, y := range top {
 		tmp := map[string]interface{}{}
 		tmp["name"] = strings.Split(y, "/")[len(strings.Split(y, "/"))-1]
-		//判断是否有子项目
+		//判断是否有����项���
 		if this.HasChild(y, this.Tree) {
 			tmp["nodes"] = this.GetMapJtopo(this.ForeignKeys(y, this.Tree), this.Tree)
 		} else {
